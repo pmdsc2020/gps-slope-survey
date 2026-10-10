@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Slope Survey Calculator</title>
+    <style>
+        :root {
+            --primary: #1b5e20;
+            --primary-light: #2e7d32;
+            --accent: #0277bd;
+            --bg: #eef2f3;
+            --card: #ffffff;
+            --text: #263238;
+            --muted: #546e7a;
+            --border: #cfd8dc;
+            --warn: #e65100;
+            --ok: #1b5e20;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 24px 16px 48px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+        .wrap { max-width: 1120px; margin: 0 auto; }
+        header { margin-bottom: 22px; }
+        h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.4px; color: var(--primary); }
+        .sub { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.45; max-width: 760px; }
+        .grid { display: grid; grid-template-columns: 420px 1fr; gap: 20px; align-items: start; }
+        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 20px 16px;
+            box-shadow: 0 8px 20px rgba(38, 50, 56, 0.05);
+        }
+        h2 {
+            margin: 0 0 14px;
+            font-size: 16px;
+            color: var(--primary);
+            border-bottom: 2px solid #a5d6a7;
+            padding-bottom: 8px;
+        }
+        .form-group { margin-bottom: 12px; }
+        label {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 12.5px;
+            font-weight: 650;
+            margin-bottom: 4px;
+            color: #37474f;
+        }
+        .unit {
+            font-size: 11px;
+            font-weight: 500;
+            color: #607d8b;
+            background: #eceff1;
+            border-radius: 999px;
+            padding: 1px 8px;
+            white-space: nowrap;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fafafa;
+            font-family: inherit;
+        }
+        textarea { min-height: 160px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(2, 119, 189, 0.12);
+        }
+        .hint { font-size: 11.5px; color: #78909c; margin: 4px 0 0; line-height: 1.35; }
+        button {
+            width: 100%;
+            margin-top: 8px;
+            background: var(--primary);
+            color: #fff;
+            border: 0;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        button:hover { background: var(--primary-light); }
+        button.secondary { background: #455a64; margin-top: 6px; }
+        button.secondary:hover { background: #37474f; }
+        .results { display: grid; gap: 12px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+            margin-top: 8px;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        th { color: #546e7a; font-weight: 650; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .box {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 11px 12px;
+        }
+        .box.hi { background: #e8f5e9; border-color: #a5d6a7; }
+        .k { font-size: 12px; color: #546e7a; margin-bottom: 4px; }
+        .v { font-size: 18px; font-weight: 750; line-height: 1.25; }
+        .note {
+            margin-top: 12px;
+            font-size: 12.5px;
+            line-height: 1.45;
+            color: #455a64;
+            background: #fff8e1;
+            border: 1px solid #ffe082;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        footer { margin-top: 16px; font-size: 12px; color: #78909c; line-height: 1.45; }
+        .error { color: #c62828; font-size: 13px; margin-top: 6px; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <h1>GPS slope survey calculator</h1>
+        <p class="sub">Enter survey points as latitude, longitude, and elevation. The tool computes horizontal distance (haversine), elevation change, slope in percent and degrees, and cumulative distance along the line. Useful for land grading, irrigation layout, and field topographic checks.</p>
+    </header>
+    <div class="grid">
+        <div class="card">
+            <h2>Survey points</h2>
+            <div class="form-group">
+                <label>Points <span class="unit">lat, lon, elev (m)</span></label>
+                <textarea id="points" placeholder="28.6139, 77.2090, 216.5
+28.6145, 77.2102, 218.1
+28.6151, 77.2115, 217.4">28.6139, 77.2090, 216.5
+28.6145, 77.2102, 218.1
+28.6151, 77.2115, 217.4</textarea>
+                <p class="hint">One point per line: latitude, longitude, elevation (metres). Decimal degrees. Comma or space separated.</p>
+            </div>
+            <button type="button" id="calcBtn">Calculate slopes</button>
+            <button type="button" class="secondary" id="sampleBtn">Load sample data</button>
+            <div class="error" id="error"></div>
+        </div>
+        <div class="card">
+            <h2>Results</h2>
+            <div id="results">
+                <p style="color:#78909c; font-size:14px">Enter at least two points and click Calculate.</p>
+            </div>
+            <div class="note" id="note">Horizontal distance uses the haversine formula on the WGS84 ellipsoid approximation (mean Earth radius 6 371 km). Elevation is treated as orthometric or ellipsoid height — use consistent vertical datum. Slope % = (rise / run) × 100. This is a field-planning estimate; it is not a substitute for a licensed survey.</div>
+            <footer>
+                Distances are horizontal (plan). Vertical accuracy of consumer GPS is typically several metres; differential or RTK GNSS is preferred for grading work. Cumulative distance is the sum of segment lengths along the survey line.
+            </footer>
+        </div>
+    </div>
+</div>
+<script>
+function toRad(deg) { return deg * Math.PI / 180; }
+
+function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // metres
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+function parsePoints(text) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+    const points = [];
+    for (const line of lines) {
+        const parts = line.split(/[,\s]+/).filter(p => p !== '');
+        if (parts.length < 3) continue;
+        const lat = parseFloat(parts[0]);
+        const lon = parseFloat(parts[1]);
+        const elev = parseFloat(parts[2]);
+        if (isNaN(lat) || isNaN(lon) || isNaN(elev)) continue;
+        if (lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
+        points.push({ lat, lon, elev });
+    }
+    return points;
+}
+
+function fmt(n, d) {
+    return Number(n).toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d });
+}
+
+function calculate() {
+    const errorEl = document.getElementById('error');
+    errorEl.textContent = '';
+    const text = document.getElementById('points').value;
+    const points = parsePoints(text);
+
+    if (points.length < 2) {
+        errorEl.textContent = 'Need at least two valid points.';
+        document.getElementById('results').innerHTML = '<p style="color:#78909c; font-size:14px">Enter at least two points and click Calculate.</p>';
+        return;
+    }
+
+    let totalDist = 0;
+    let totalRise = 0;
+    const segments = [];
+
+    for (let i = 1; i < points.length; i++) {
+        const p1 = points[i - 1];
+        const p2 = points[i];
+        const dist = haversine(p1.lat, p1.lon, p2.lat, p2.lon);
+        const rise = p2.elev - p1.elev;
+        const slopePct = dist > 0 ? (rise / dist) * 100 : 0;
+        const slopeDeg = dist > 0 ? Math.atan(rise / dist) * (180 / Math.PI) : 0;
+        totalDist += dist;
+        totalRise += rise;
+        segments.push({
+            from: i,
+            to: i + 1,
+            dist,
+            rise,
+            slopePct,
+            slopeDeg,
+            cumDist: totalDist
+        });
+    }
+
+    const overallSlopePct = totalDist > 0 ? (totalRise / totalDist) * 100 : 0;
+    const overallSlopeDeg = totalDist > 0 ? Math.atan(totalRise / totalDist) * (180 / Math.PI) : 0;
+
+    let html = '<div class="summary">';
+    html += '<div class="box hi"><div class="k">Total horizontal distance</div><div class="v">' + fmt(totalDist, 1) + ' <small>m</small></div></div>';
+    html += '<div class="box hi"><div class="k">Net elevation change</div><div class="v">' + fmt(totalRise, 2) + ' <small>m</small></div></div>';
+    html += '<div class="box"><div class="k">Overall slope</div><div class="v">' + fmt(overallSlopePct, 2) + ' <small>% (' + fmt(overallSlopeDeg, 2) + '°)</small></div></div>';
+    html += '<div class="box"><div class="k">Points</div><div class="v">' + points.length + '</div></div>';
+    html += '</div>';
+
+    html += '<table><thead><tr><th>Seg</th><th>Dist (m)</th><th>Rise (m)</th><th>Slope %</th><th>Slope °</th><th>Cum dist (m)</th></tr></thead><tbody>';
+    segments.forEach(s => {
+        html += '<tr>';
+        html += '<td>' + s.from + '→' + s.to + '</td>';
+        html += '<td>' + fmt(s.dist, 1) + '</td>';
+        html += '<td>' + fmt(s.rise, 2) + '</td>';
+        html += '<td>' + fmt(s.slopePct, 2) + '</td>';
+        html += '<td>' + fmt(s.slopeDeg, 2) + '</td>';
+        html += '<td>' + fmt(s.cumDist, 1) + '</td>';
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+
+    document.getElementById('results').innerHTML = html;
+}
+
+document.getElementById('calcBtn').addEventListener('click', calculate);
+document.getElementById('sampleBtn').addEventListener('click', function () {
+    document.getElementById('points').value = '28.6139, 77.2090, 216.5\n28.6145, 77.2102, 218.1\n28.6151, 77.2115, 217.4\n28.6160, 77.2130, 215.8';
+    calculate();
+});
+document.getElementById('points').addEventListener('input', function () {
+    document.getElementById('error').textContent = '';
+});
+</script>
+</body>
+</html>

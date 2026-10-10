@@ -1,281 +1,870 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS Slope Survey Calculator</title>
-    <style>
-        :root {
-            --primary: #1b5e20;
-            --primary-light: #2e7d32;
-            --accent: #0277bd;
-            --bg: #eef2f3;
-            --card: #ffffff;
-            --text: #263238;
-            --muted: #546e7a;
-            --border: #cfd8dc;
-            --warn: #e65100;
-            --ok: #1b5e20;
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            padding: 24px 16px 48px;
-            background: var(--bg);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-        }
-        .wrap { max-width: 1120px; margin: 0 auto; }
-        header { margin-bottom: 22px; }
-        h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.4px; color: var(--primary); }
-        .sub { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.45; max-width: 760px; }
-        .grid { display: grid; grid-template-columns: 420px 1fr; gap: 20px; align-items: start; }
-        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 20px 20px 16px;
-            box-shadow: 0 8px 20px rgba(38, 50, 56, 0.05);
-        }
-        h2 {
-            margin: 0 0 14px;
-            font-size: 16px;
-            color: var(--primary);
-            border-bottom: 2px solid #a5d6a7;
-            padding-bottom: 8px;
-        }
-        .form-group { margin-bottom: 12px; }
-        label {
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
-            font-size: 12.5px;
-            font-weight: 650;
-            margin-bottom: 4px;
-            color: #37474f;
-        }
-        .unit {
-            font-size: 11px;
-            font-weight: 500;
-            color: #607d8b;
-            background: #eceff1;
-            border-radius: 999px;
-            padding: 1px 8px;
-            white-space: nowrap;
-        }
-        input, textarea {
-            width: 100%;
-            padding: 9px 12px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 14px;
-            background: #fafafa;
-            font-family: inherit;
-        }
-        textarea { min-height: 160px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
-        input:focus, textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            background: #fff;
-            box-shadow: 0 0 0 3px rgba(2, 119, 189, 0.12);
-        }
-        .hint { font-size: 11.5px; color: #78909c; margin: 4px 0 0; line-height: 1.35; }
-        button {
-            width: 100%;
-            margin-top: 8px;
-            background: var(--primary);
-            color: #fff;
-            border: 0;
-            border-radius: 10px;
-            padding: 12px;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-        button:hover { background: var(--primary-light); }
-        button.secondary { background: #455a64; margin-top: 6px; }
-        button.secondary:hover { background: #37474f; }
-        .results { display: grid; gap: 12px; }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13.5px;
-            margin-top: 8px;
-        }
-        th, td {
-            text-align: left;
-            padding: 8px 10px;
-            border-bottom: 1px solid var(--border);
-        }
-        th { color: #546e7a; font-weight: 650; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
-        .summary {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 12px;
-        }
-        .box {
-            background: #f8fafc;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 11px 12px;
-        }
-        .box.hi { background: #e8f5e9; border-color: #a5d6a7; }
-        .k { font-size: 12px; color: #546e7a; margin-bottom: 4px; }
-        .v { font-size: 18px; font-weight: 750; line-height: 1.25; }
-        .note {
-            margin-top: 12px;
-            font-size: 12.5px;
-            line-height: 1.45;
-            color: #455a64;
-            background: #fff8e1;
-            border: 1px solid #ffe082;
-            border-radius: 10px;
-            padding: 10px 12px;
-        }
-        footer { margin-top: 16px; font-size: 12px; color: #78909c; line-height: 1.45; }
-        .error { color: #c62828; font-size: 13px; margin-top: 6px; }
-    </style>
-</head>
-<body>
-<div class="wrap">
-    <header>
-        <h1>GPS slope survey calculator</h1>
-        <p class="sub">Enter survey points as latitude, longitude, and elevation. The tool computes horizontal distance (haversine), elevation change, slope in percent and degrees, and cumulative distance along the line. Useful for land grading, irrigation layout, and field topographic checks.</p>
-    </header>
-    <div class="grid">
-        <div class="card">
-            <h2>Survey points</h2>
-            <div class="form-group">
-                <label>Points <span class="unit">lat, lon, elev (m)</span></label>
-                <textarea id="points" placeholder="28.6139, 77.2090, 216.5
-28.6145, 77.2102, 218.1
-28.6151, 77.2115, 217.4">28.6139, 77.2090, 216.5
-28.6145, 77.2102, 218.1
-28.6151, 77.2115, 217.4</textarea>
-                <p class="hint">One point per line: latitude, longitude, elevation (metres). Decimal degrees. Comma or space separated.</p>
-            </div>
-            <button type="button" id="calcBtn">Calculate slopes</button>
-            <button type="button" class="secondary" id="sampleBtn">Load sample data</button>
-            <div class="error" id="error"></div>
-        </div>
-        <div class="card">
-            <h2>Results</h2>
-            <div id="results">
-                <p style="color:#78909c; font-size:14px">Enter at least two points and click Calculate.</p>
-            </div>
-            <div class="note" id="note">Horizontal distance uses the haversine formula on the WGS84 ellipsoid approximation (mean Earth radius 6 371 km). Elevation is treated as orthometric or ellipsoid height — use consistent vertical datum. Slope % = (rise / run) × 100. This is a field-planning estimate; it is not a substitute for a licensed survey.</div>
-            <footer>
-                Distances are horizontal (plan). Vertical accuracy of consumer GPS is typically several metres; differential or RTK GNSS is preferred for grading work. Cumulative distance is the sum of segment lengths along the survey line.
-            </footer>
-        </div>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2D6148"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}</style></head><body>
+<title>GPS Slope Survey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-screen field app — header with GPS state, scrolling work area, bottom tab bar (Survey / Result / Surveys) */
+:root{
+  --bg:#ECEFE9; --surface:#F8FAF6; --raised:#FFFFFF; --ink:#18221C; --muted:#5A695F; --line:#CDD5CA;
+  --accent:#E2A008; --accent-ink:#1B1505; --field:#2D6148; --field-soft:rgba(45,97,72,.12);
+  --good:#2D7A4E; --warn:#A86A12; --bad:#B83A2E;
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow Semi Condensed",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1411; --surface:#171E19; --raised:#1D2620; --ink:#E2E9E1; --muted:#93A297; --line:#2B362E;
+  --accent:#F0B429; --accent-ink:#1B1505; --field:#7FC79F; --field-soft:rgba(127,199,159,.14);
+  --good:#5FC58B; --warn:#E5A940; --bad:#EE6B5D; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1411; --surface:#171E19; --raised:#1D2620; --ink:#E2E9E1; --muted:#93A297; --line:#2B362E;
+  --accent:#F0B429; --accent-ink:#1B1505; --field:#7FC79F; --field-soft:rgba(127,199,159,.14);
+  --good:#5FC58B; --warn:#E5A940; --bad:#EE6B5D; color-scheme:dark}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+.app{display:flex;flex-direction:column;height:100%;max-width:620px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.mark{width:34px;height:34px;flex:none;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.brand h1{margin:0;font-family:var(--f-display);font-size:1.25rem;font-weight:700;letter-spacing:.01em;line-height:1.1}
+.brand p{margin:0;font-size:.85rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.chip.good{color:var(--good);border-color:currentColor}.chip.warn{color:var(--warn);border-color:currentColor}.chip.bad{color:var(--bad);border-color:currentColor}
+.chip.live::before{animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.25}}
+main{flex:1;overflow-y:auto;padding:14px 16px calc(84px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+.tab{display:flex;flex-direction:column;gap:14px}
+.banner{margin:10px 16px 0;padding:10px 12px;border:1px dashed var(--accent);border-radius:var(--r);font-size:.9rem;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.eyebrow{font-size:.75rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+h2{font-family:var(--f-display);font-size:1.1rem;margin:0;font-weight:700}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+.readouts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 12px}
+.ro{min-width:0}
+.ro b{display:block;font-family:var(--f-data);font-weight:500;font-size:1.25rem;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ro span{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.coords{font-family:var(--f-data);font-size:.82rem;color:var(--muted);word-break:break-all}
+.btn{appearance:none;border:1px solid var(--line);background:var(--raised);border-radius:8px;padding:10px 14px;font-weight:600;cursor:pointer;min-height:44px}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible,.tabs button:focus-visible,.pt:focus-visible,.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-size:1.1rem}
+.btn.wide{width:100%}
+.btn.danger{color:var(--bad)}
+.btn.small{min-height:36px;padding:6px 12px;font-size:.9rem}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:8px 12px;font-weight:600;cursor:pointer;min-height:38px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.progress{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:10px 0 6px}
+.progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s linear}
+.note{font-size:.88rem;color:var(--muted)}
+.msg{font-size:.9rem;padding:10px 12px;border-radius:8px;background:var(--field-soft);margin-top:10px}
+.msg.bad{background:transparent;border:1px solid var(--bad);color:var(--ink)}
+.pts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.pt{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;width:100%}
+.pts li:first-child .pt{border-top:0}
+.lbl{width:44px;height:44px;border-radius:50%;border:2px solid var(--field);color:var(--field);display:grid;place-items:center;font-family:var(--f-display);font-weight:700}
+.pt .mid{min-width:0}
+.pt .el{font-family:var(--f-data);font-size:1.05rem}
+.src{font-size:.7rem;font-weight:600;letter-spacing:.06em;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted);margin-left:6px;vertical-align:2px}
+.src.rl{color:var(--field);border-color:var(--field)}
+.pt .seg-s{text-align:right;font-family:var(--f-data);font-size:.9rem}
+.pt .seg-s small{display:block;color:var(--muted);font-size:.75rem}
+.empty{padding:18px 4px;color:var(--muted);text-align:center}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:end}
+.big{font-family:var(--f-display);font-size:3.3rem;font-weight:700;line-height:.95;font-variant-numeric:tabular-nums}
+.big small{font-size:1.4rem;font-weight:600;color:var(--muted)}
+.pm{font-family:var(--f-data);font-size:.95rem;color:var(--muted)}
+.cls{display:flex;gap:12px;align-items:flex-start;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.cls .letter{flex:none;width:46px;height:46px;border-radius:8px;background:var(--field);color:var(--bg);display:grid;place-items:center;font-family:var(--f-display);font-size:1.6rem;font-weight:700}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.kv div{min-width:0}
+.kv b{display:block;font-family:var(--f-data);font-weight:500;font-variant-numeric:tabular-nums}
+.kv span{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+canvas{display:block;width:100%;max-width:100%}
+.tablewrap{overflow-x:auto;margin:0 -4px}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:420px}
+th,td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+td{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+tr.methods td{font-weight:500}
+.classes{display:flex;flex-direction:column}
+.classes div{display:grid;grid-template-columns:28px 70px minmax(0,1fr);gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:.88rem}
+.classes div:first-child{border-top:0}
+.classes .on{color:var(--field);font-weight:600}
+.classes b{font-family:var(--f-display)}
+.classes .r{font-family:var(--f-data);font-size:.82rem}
+.btngrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted)}
+label.f input,label.f textarea{border:1px solid var(--line);background:var(--raised);border-radius:8px;padding:10px;min-height:44px;font-size:1rem;color:var(--ink)}
+label.f input:focus,label.f textarea:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.fgrid .full{grid-column:1/-1}
+.svlist{list-style:none;margin:0;padding:0}
+.svlist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.svlist li:first-child{border-top:0}
+.svlist .t{font-weight:600}
+.svlist .cur{color:var(--field)}
+.tips{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:.92rem}
+.credit{text-align:center;font-size:.82rem;color:var(--muted);padding:4px 0 8px}
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));z-index:5}
+.tabs .in{display:grid;grid-template-columns:repeat(3,1fr);width:100%;max-width:620px}
+.tabs button{border:0;background:none;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer;min-height:52px;border-radius:8px}
+.tabs button[aria-selected="true"]{color:var(--ink)}
+.tabs button[aria-selected="true"] svg{color:var(--accent)}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:620px;border-radius:16px 16px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom,0px));max-height:88%;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.92rem;z-index:20;max-width:calc(100% - 32px);text-align:center}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px solid var(--field);vertical-align:middle;margin-right:5px}
+.legend i.d{border-top:2px dashed var(--accent)}
+@media (max-width:380px){.big{font-size:2.8rem}.readouts .ro b{font-size:1.05rem}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 20h18"/><path d="M3 20L20 8"/><path d="M13 20a7 7 0 0 0-1.6-4.4"/></svg>
+      </div>
+      <div style="min-width:0">
+        <h1>GPS Slope Survey</h1>
+        <p id="hdrSurvey">जमिनीचा उतार · GPS द्वारे</p>
+      </div>
     </div>
+    <span id="gpsChip" class="chip">GPS off</span>
+  </header>
+
+  <div id="exampleBanner" class="banner" hidden>
+    <span>Example data from a sample transect, not your survey.</span>
+    <button class="btn small" id="bannerNew" type="button">Start new survey</button>
+  </div>
+
+  <main id="main">
+    <!-- SURVEY TAB -->
+    <section class="tab" id="tab-survey">
+      <div class="card" id="liveCard">
+        <div class="spread">
+          <h2>Live position</h2>
+          <button class="btn small" id="btnGps" type="button">Start GPS</button>
+        </div>
+        <div class="readouts">
+          <div class="ro"><span>Altitude</span><b id="roAlt">—</b></div>
+          <div class="ro"><span>± Vertical</span><b id="roV">—</b></div>
+          <div class="ro"><span>± Horizontal</span><b id="roH">—</b></div>
+        </div>
+        <div class="coords" id="roLL">Tap Start GPS and allow location access.</div>
+        <div id="gpsMsg" class="msg bad" hidden></div>
+
+        <div style="margin-top:14px" class="spread">
+          <span class="eyebrow" style="margin:0">Average readings for</span>
+          <div class="seg" id="durSeg" role="group" aria-label="Averaging time">
+            <button type="button" data-d="10">10 s</button>
+            <button type="button" data-d="30" aria-pressed="true">30 s</button>
+            <button type="button" data-d="60">60 s</button>
+          </div>
+        </div>
+        <div id="recBox" hidden>
+          <div class="progress"><i id="recBar"></i></div>
+          <div class="spread note"><span id="recTxt">Recording…</span><button class="btn small" id="btnCancelRec" type="button">Cancel</button></div>
+        </div>
+        <button class="btn primary wide" id="btnRecord" type="button" style="margin-top:12px">Record point P1</button>
+        <p class="note" style="margin:8px 0 0">Stand still at the point, phone held flat at the same height for every point.</p>
+      </div>
+
+      <div class="card">
+        <div class="spread">
+          <h2>Points <span class="note num" id="ptCount"></span></h2>
+          <button class="btn small" id="btnAddManual" type="button">+ Enter manually</button>
+        </div>
+        <ul class="pts" id="ptList"></ul>
+        <p class="note" style="margin:8px 0 0">Tap a point to enter an RL from an auto level, rename, reorder or delete.</p>
+      </div>
+    </section>
+
+    <!-- RESULT TAB -->
+    <section class="tab" id="tab-result" hidden>
+      <div class="card" id="resHero"></div>
+      <div class="card">
+        <div class="spread"><h2>Ground profile</h2><span class="note">Elevation vs chainage</span></div>
+        <canvas id="cvProfile" height="240" aria-label="Ground profile chart"></canvas>
+        <div class="legend"><span><i></i>Measured profile</span><span id="lgFit"><i class="d"></i>Best-fit line</span><span>Bars = ± vertical accuracy</span></div>
+      </div>
+      <div class="card">
+        <div class="spread"><h2>Plan view</h2><span class="note">North up</span></div>
+        <canvas id="cvPlan" height="220" aria-label="Plan view of points"></canvas>
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:8px">Segment table</h2>
+        <div class="tablewrap"><table id="segTable"></table></div>
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:8px">Land slope classes</h2>
+        <div class="classes" id="clsTable"></div>
+        <p class="note" style="margin:10px 0 0">Treatments are typical watershed practice. Confirm against soil depth, land use and the scheme guidelines you follow.</p>
+      </div>
+      <div class="btngrid">
+        <button class="btn" id="btnCopySum" type="button">Copy summary</button>
+        <button class="btn" id="btnCsv" type="button">Download CSV</button>
+        <button class="btn" id="btnKml" type="button">Download KML</button>
+        <button class="btn" id="btnCopyCsv" type="button">Copy CSV</button>
+      </div>
+    </section>
+
+    <!-- SURVEYS TAB -->
+    <section class="tab" id="tab-surveys" hidden>
+      <div class="card">
+        <p class="eyebrow">Current survey</p>
+        <div class="fgrid">
+          <label class="f full">Survey name<input id="fName" type="text" autocomplete="off"></label>
+          <label class="f">Village / site<input id="fSite" type="text" autocomplete="off"></label>
+          <label class="f">Surveyor<input id="fBy" type="text" autocomplete="off"></label>
+          <label class="f full">Remarks<textarea id="fRem" rows="2"></textarea></label>
+        </div>
+        <button class="btn primary wide" id="btnNew" type="button" style="margin-top:12px">Start new survey</button>
+      </div>
+      <div class="card">
+        <p class="eyebrow">Saved on this phone</p>
+        <ul class="svlist" id="svList"></ul>
+      </div>
+      <div class="card">
+        <p class="eyebrow">Getting a usable slope from phone GPS</p>
+        <ol class="tips">
+          <li>Phone GPS height is far weaker than position. Expect ±3 to ±15 m vertically, so keep points far apart: about 100 m or more on gentle land.</li>
+          <li>Record every point with the same averaging time, in open sky, after the fix chip turns green.</li>
+          <li>Walk the line of steepest slope, from the top point to the bottom point.</li>
+          <li>When the result says Unreliable, take the RL from an auto level or a DEM and type it into the point. The app then uses that RL for slope.</li>
+          <li>GPS altitude is height above the WGS84 ellipsoid. That offset cancels out in slope, so do not mix GPS heights with RLs from a benchmark in the same survey.</li>
+        </ol>
+      </div>
+      <p class="credit">Developed by Jitendra Sonawane, Agriculture Engineer · 7720045808</p>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Sections">
+    <div class="in" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="survey" type="button">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>Survey</button>
+      <button role="tab" aria-selected="false" data-tab="result" type="button">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 20h18"/><path d="M4 16l5-5 4 3 7-8"/></svg>Result</button>
+      <button role="tab" aria-selected="false" data-tab="surveys" type="button">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Surveys</button>
+    </div>
+  </nav>
 </div>
+
+<div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" hidden></div>
+
 <script>
-function toRad(deg) { return deg * Math.PI / 180; }
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const R_EARTH=6371008.8;
+const KEY='gpsSlopeSurvey.v1';
+const store={
+  get(){try{const v=localStorage.getItem(KEY);return v?JSON.parse(v):null}catch(e){return null}},
+  set(v){try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}}
+};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fx=(v,d)=>(v==null||!isFinite(v))?'—':Number(v).toFixed(d);
 
-function haversine(lat1, lon1, lat2, lon2) {
-    const R = 6371000; // metres
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+/* ---------- data ---------- */
+function newSurvey(example){
+  const d=new Date();
+  return {id:uid(),name:example?'Example transect':'Survey '+d.toLocaleDateString('en-IN'),site:'',by:'',rem:'',created:d.toISOString(),points:[],example:!!example};
 }
+function makeExample(){
+  const s=newSurvey(true);
+  s.site='Sample site (example)';
+  const base={lat:21.82500,lon:74.21800};
+  const elev=[412.6,409.1,405.8,401.2,398.9,395.4];
+  const acc=[3.8,4.2,3.5,4.6,3.9,4.1];
+  elev.forEach((e,i)=>{
+    s.points.push({id:uid(),label:'P'+(i+1),lat:base.lat-0.00035*i-(i%2?0.00004:0),lon:base.lon+0.00040*i,alt:e,altAcc:acc[i],hAcc:3+i%3,n:28,sd:0.9,rl:null,note:'',t:Date.now(),manual:false});
+  });
+  return s;
+}
+let db=store.get();
+if(!db||!db.surveys||!db.cur||!db.surveys[db.cur]){
+  const ex=makeExample();
+  db={cur:ex.id,surveys:{}};db.surveys[ex.id]=ex;
+}
+const S=()=>db.surveys[db.cur];
+const save=()=>store.set(db);
 
-function parsePoints(text) {
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
-    const points = [];
-    for (const line of lines) {
-        const parts = line.split(/[,\s]+/).filter(p => p !== '');
-        if (parts.length < 3) continue;
-        const lat = parseFloat(parts[0]);
-        const lon = parseFloat(parts[1]);
-        const elev = parseFloat(parts[2]);
-        if (isNaN(lat) || isNaN(lon) || isNaN(elev)) continue;
-        if (lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
-        points.push({ lat, lon, elev });
+/* ---------- geometry & slope ---------- */
+const rad=d=>d*Math.PI/180;
+function hav(a,b){
+  const dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon);
+  const h=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R_EARTH*Math.asin(Math.min(1,Math.sqrt(h)));
+}
+const hasRL=p=>p.rl!=null&&p.rl!==''&&isFinite(+p.rl);
+const elev=p=>hasRL(p)?+p.rl:(p.alt!=null&&isFinite(p.alt)?p.alt:null);
+const sig=p=>hasRL(p)?0.02:(p.altAcc!=null&&isFinite(p.altAcc)?p.altAcc:10);
+
+function compute(pts){
+  const v=pts.filter(p=>elev(p)!=null&&isFinite(p.lat)&&isFinite(p.lon));
+  const rows=[];let ch=0;
+  v.forEach((p,i)=>{
+    let d=0,dh=null,s=null;
+    if(i>0){d=hav(v[i-1],p);ch+=d;dh=elev(p)-elev(v[i-1]);s=d>0?dh/d*100:null}
+    rows.push({p,ch,d,dh,s,e:elev(p),sg:sig(p)});
+  });
+  const out={rows,n:v.length,skipped:pts.length-v.length};
+  if(v.length<2)return out;
+  const a=v[0],b=v[v.length-1],dH=elev(b)-elev(a),D=hav(a,b),u2=Math.hypot(sig(a),sig(b));
+  out.e2e={key:'e2e',name:'End to end',d:D,dh:dH,s:D>0?dH/D*100:null,u:D>0?u2/D*100:null};
+  out.route={key:'route',name:'Along route',d:ch,dh:dH,s:ch>0?dH/ch*100:null,u:ch>0?u2/ch*100:null};
+  if(v.length>=3){
+    const n=rows.length,mx=rows.reduce((t,r)=>t+r.ch,0)/n,my=rows.reduce((t,r)=>t+r.e,0)/n;
+    let sxx=0,sxy=0,syy=0;rows.forEach(r=>{sxx+=(r.ch-mx)**2;sxy+=(r.ch-mx)*(r.e-my);syy+=(r.e-my)**2});
+    if(sxx>0){
+      const b1=sxy/sxx,a1=my-b1*mx;
+      let ss=0;rows.forEach(r=>{ss+=(r.e-(a1+b1*r.ch))**2});
+      const seRes=n>2?Math.sqrt(ss/(n-2)/sxx):0;
+      const sMean=Math.sqrt(rows.reduce((t,r)=>t+r.sg*r.sg,0)/n);
+      const seMeas=sMean/Math.sqrt(sxx);
+      out.fit={key:'fit',name:'Best fit',d:ch,dh:b1*ch,s:b1*100,u:Math.max(seRes,seMeas)*100,a:a1,b:b1,r2:syy>0?1-ss/syy:1};
     }
-    return points;
+  }
+  return out;
+}
+function reliability(r){
+  if(!r||r.s==null)return null;
+  if(r.d<10)return{k:'bad',t:'Too close'};
+  const q=r.u/Math.max(Math.abs(r.s),0.05);
+  if(q<=0.25)return{k:'good',t:'Reliable'};
+  if(q<=0.6)return{k:'warn',t:'Fair'};
+  return{k:'bad',t:'Unreliable'};
+}
+const CLASSES=[
+  {c:'A',lo:0,hi:1,name:'Nearly level',tr:'Field bunding, farm ponds; drainage where water stands.'},
+  {c:'B',lo:1,hi:3,name:'Very gently sloping',tr:'Field or graded bunds, farm ponds.'},
+  {c:'C',lo:3,hi:8,name:'Gently sloping',tr:'Contour or graded bunds, compartment bunding.'},
+  {c:'D',lo:8,hi:15,name:'Moderately sloping',tr:'Contour bunds, terracing, staggered trenches.'},
+  {c:'E',lo:15,hi:30,name:'Moderately steep',tr:'CCT, staggered trenches, horticulture or agroforestry.'},
+  {c:'F',lo:30,hi:50,name:'Steep',tr:'CCT, gully plugs, afforestation.'},
+  {c:'G',lo:50,hi:Infinity,name:'Very steep',tr:'Afforestation and protection; keep out of cultivation.'}
+];
+const classOf=s=>{const a=Math.abs(s);return CLASSES.find(c=>a>=c.lo&&a<c.hi)||CLASSES[CLASSES.length-1]};
+const deg=s=>Math.atan(Math.abs(s)/100)*180/Math.PI;
+const oneIn=s=>Math.abs(s)<1e-6?'level':'1 in '+(100/Math.abs(s)).toFixed(Math.abs(s)>=10?1:0);
+
+/* ---------- UI state ---------- */
+let tab='survey',method='e2e',dur=30;
+let watchId=null,lastFix=null,gpsState='off',rec=null,wakeLock=null;
+let ui={};try{ui=JSON.parse(localStorage.getItem(KEY+'.ui')||'{}')}catch(e){ui={}}
+if(ui.dur)dur=ui.dur; if(ui.method)method=ui.method;
+const saveUi=()=>{try{localStorage.setItem(KEY+'.ui',JSON.stringify({dur,method}))}catch(e){}};
+
+function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>el.hidden=true,2600)}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+function setTab(t){
+  tab=t;
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+  ['survey','result','surveys'].forEach(k=>$('#tab-'+k).hidden=k!==t);
+  $('#main').scrollTop=0;
+  render();
 }
 
-function fmt(n, d) {
-    return Number(n).toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d });
+/* ---------- GPS ---------- */
+function fixQuality(f){
+  if(!f)return null;
+  if(f.hAcc<=5&&(f.altAcc==null||f.altAcc<=8))return'good';
+  if(f.hAcc<=15)return'warn';
+  return'bad';
 }
-
-function calculate() {
-    const errorEl = document.getElementById('error');
-    errorEl.textContent = '';
-    const text = document.getElementById('points').value;
-    const points = parsePoints(text);
-
-    if (points.length < 2) {
-        errorEl.textContent = 'Need at least two valid points.';
-        document.getElementById('results').innerHTML = '<p style="color:#78909c; font-size:14px">Enter at least two points and click Calculate.</p>';
-        return;
-    }
-
-    let totalDist = 0;
-    let totalRise = 0;
-    const segments = [];
-
-    for (let i = 1; i < points.length; i++) {
-        const p1 = points[i - 1];
-        const p2 = points[i];
-        const dist = haversine(p1.lat, p1.lon, p2.lat, p2.lon);
-        const rise = p2.elev - p1.elev;
-        const slopePct = dist > 0 ? (rise / dist) * 100 : 0;
-        const slopeDeg = dist > 0 ? Math.atan(rise / dist) * (180 / Math.PI) : 0;
-        totalDist += dist;
-        totalRise += rise;
-        segments.push({
-            from: i,
-            to: i + 1,
-            dist,
-            rise,
-            slopePct,
-            slopeDeg,
-            cumDist: totalDist
-        });
-    }
-
-    const overallSlopePct = totalDist > 0 ? (totalRise / totalDist) * 100 : 0;
-    const overallSlopeDeg = totalDist > 0 ? Math.atan(totalRise / totalDist) * (180 / Math.PI) : 0;
-
-    let html = '<div class="summary">';
-    html += '<div class="box hi"><div class="k">Total horizontal distance</div><div class="v">' + fmt(totalDist, 1) + ' <small>m</small></div></div>';
-    html += '<div class="box hi"><div class="k">Net elevation change</div><div class="v">' + fmt(totalRise, 2) + ' <small>m</small></div></div>';
-    html += '<div class="box"><div class="k">Overall slope</div><div class="v">' + fmt(overallSlopePct, 2) + ' <small>% (' + fmt(overallSlopeDeg, 2) + '°)</small></div></div>';
-    html += '<div class="box"><div class="k">Points</div><div class="v">' + points.length + '</div></div>';
-    html += '</div>';
-
-    html += '<table><thead><tr><th>Seg</th><th>Dist (m)</th><th>Rise (m)</th><th>Slope %</th><th>Slope °</th><th>Cum dist (m)</th></tr></thead><tbody>';
-    segments.forEach(s => {
-        html += '<tr>';
-        html += '<td>' + s.from + '→' + s.to + '</td>';
-        html += '<td>' + fmt(s.dist, 1) + '</td>';
-        html += '<td>' + fmt(s.rise, 2) + '</td>';
-        html += '<td>' + fmt(s.slopePct, 2) + '</td>';
-        html += '<td>' + fmt(s.slopeDeg, 2) + '</td>';
-        html += '<td>' + fmt(s.cumDist, 1) + '</td>';
-        html += '</tr>';
-    });
-    html += '</tbody></table>';
-
-    document.getElementById('results').innerHTML = html;
+let slowT=null;
+const UA=navigator.userAgent||'';
+const IN_APP=/; wv\)|FBAN|FBAV|Instagram|WhatsApp|Line\/|GSA\//i.test(UA);
+let IN_FRAME=false;try{IN_FRAME=window.self!==window.top}catch(e){IN_FRAME=true}
+function envProblem(){
+  if(!('geolocation' in navigator))return{hard:true,t:'This browser has no location support. Open the app in Google Chrome.'};
+  if(window.isSecureContext===false)return{hard:true,t:'GPS is blocked because this page is not opened from a secure https address (for example, opened from a file manager, WhatsApp or Drive). Open it from your GitHub Pages https link in Chrome.'};
+  if(IN_FRAME)return{hard:false,t:'This is the preview inside the Claude app, where GPS is always blocked. Open your GitHub Pages https link in Chrome for live GPS. You can still enter points manually here.'};
+  if(IN_APP)return{hard:false,t:'This page is open inside another app’s viewer, which usually blocks GPS. Tap ⋮ and choose "Open in Chrome".'};
+  return null;
 }
+function showMsg(t,bad){const m=$('#gpsMsg');m.textContent=t;m.className='msg'+(bad?' bad':'');m.hidden=false}
+function hideMsg(){$('#gpsMsg').hidden=true}
+const DENIED_HELP='Location permission is blocked for this page. In Chrome, tap the icon left of the web address → Permissions → Location → Allow, then reload. Also check phone Settings → Apps → Chrome → Permissions → Location → Allow, and use "Precise" location.';
+function startGPS(){
+  hideMsg();
+  const env=envProblem();
+  if(env&&env.hard){gpsError(env.t);return}
+  if(watchId!=null)return;
+  gpsState='wait';renderLive();
+  try{
+    // One-shot request first: on many Android phones this is what raises the permission prompt
+    navigator.geolocation.getCurrentPosition(onFix,onErr,{enableHighAccuracy:true,timeout:30000,maximumAge:0});
+    watchId=navigator.geolocation.watchPosition(onFix,onErr,{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+  }catch(e){gpsError('Location could not start: '+e.message);return}
+  if(env)showMsg(env.t,false);
+  clearTimeout(slowT);
+  slowT=setTimeout(()=>{
+    if(watchId!=null&&!lastFix)showMsg((env?env.t+' ':'')+'No fix yet after 25 s. Check that Location is ON in quick settings, "Google Location Accuracy" is ON, and stand in open sky away from buildings and trees. Still trying…',false);
+  },25000);
+  requestWake();
+}
+function stopGPS(){
+  if(watchId!=null){try{navigator.geolocation.clearWatch(watchId)}catch(e){}}
+  clearTimeout(slowT);
+  watchId=null;gpsState='off';lastFix=null;cancelRec();releaseWake();renderLive();
+}
+function onFix(p){
+  hideMsg();
+  if(watchId==null)return;
+  const c=p.coords;
+  lastFix={lat:c.latitude,lon:c.longitude,alt:(c.altitude==null?null:c.altitude),altAcc:(c.altitudeAccuracy==null?null:c.altitudeAccuracy),hAcc:c.accuracy,t:Date.now()};
+  gpsState='fix';
+  if(rec)rec.samples.push(lastFix);
+  renderLive();
+}
+function onErr(e){
+  const detail=e&&e.message?' (Phone says: '+e.message+')':'';
+  if(e.code===1){
+    stopGPS();
+    const env=envProblem();
+    gpsError((env?env.t:DENIED_HELP)+detail);
+  }else if(e.code===3){
+    if(!lastFix){gpsState='wait';renderLive()}
+  }else if(!lastFix){
+    showMsg('Phone location is OFF or unavailable. Pull down the quick settings, turn Location ON, then wait in open sky.'+detail,true);
+  }
+}
+function gpsError(t){showMsg(t,true);renderLive()}
+async function requestWake(){try{if('wakeLock' in navigator&&document.visibilityState==='visible'){wakeLock=await navigator.wakeLock.request('screen')}}catch(e){wakeLock=null}}
+function releaseWake(){try{wakeLock&&wakeLock.release()}catch(e){}wakeLock=null}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&watchId!=null)requestWake()});
 
-document.getElementById('calcBtn').addEventListener('click', calculate);
-document.getElementById('sampleBtn').addEventListener('click', function () {
-    document.getElementById('points').value = '28.6139, 77.2090, 216.5\n28.6145, 77.2102, 218.1\n28.6151, 77.2115, 217.4\n28.6160, 77.2130, 215.8';
-    calculate();
+$('#btnGps').addEventListener('click',()=>watchId==null?startGPS():stopGPS());
+$('#durSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;dur=+b.dataset.d;saveUi();renderLive()});
+
+/* ---------- recording ---------- */
+function nextLabel(){
+  let m=0;S().points.forEach(p=>{const r=/^P(\d+)$/i.exec(p.label||'');if(r)m=Math.max(m,+r[1])});
+  return 'P'+(m+1);
+}
+$('#btnRecord').addEventListener('click',()=>{
+  if(watchId==null){startGPS();toast('Starting GPS. Record once the fix appears.');return}
+  if(!lastFix){toast('Waiting for the first GPS fix');return}
+  if(S().example){toast('Start a new survey first, so example points are not mixed in');setTab('surveys');return}
+  rec={start:Date.now(),dur:dur*1000,samples:[]};
+  if(Date.now()-lastFix.t<2500)rec.samples.push(lastFix);
+  rec.timer=setInterval(tickRec,250);
+  renderLive();
 });
-document.getElementById('points').addEventListener('input', function () {
-    document.getElementById('error').textContent = '';
+$('#btnCancelRec').addEventListener('click',()=>{cancelRec();toast('Recording cancelled')});
+function cancelRec(){if(rec){clearInterval(rec.timer);rec=null}renderLive()}
+function tickRec(){
+  if(!rec)return;
+  const el=Date.now()-rec.start;
+  $('#recBar').style.width=Math.min(100,el/rec.dur*100)+'%';
+  $('#recTxt').textContent=`Averaging… ${Math.max(0,Math.ceil((rec.dur-el)/1000))} s left · ${rec.samples.length} readings`;
+  if(el>=rec.dur)finishRec();
+}
+function average(sm){
+  if(!sm.length)return null;
+  const hs=sm.map(s=>s.hAcc).sort((a,b)=>a-b),med=hs[Math.floor(hs.length/2)];
+  const use=sm.filter(s=>s.hAcc<=Math.max(med*1.5,hs[0]+2));
+  let wl=0,la=0,lo=0;use.forEach(s=>{const w=1/Math.max(s.hAcc,1)**2;wl+=w;la+=s.lat*w;lo+=s.lon*w});
+  const alts=use.filter(s=>s.alt!=null&&isFinite(s.alt));
+  let alt=null,sd=null,altAcc=null;
+  if(alts.length){
+    let wa=0,sa=0;alts.forEach(s=>{const w=1/Math.max(s.altAcc||10,1)**2;wa+=w;sa+=s.alt*w});alt=sa/wa;
+    const m=alts.reduce((t,s)=>t+s.alt,0)/alts.length;
+    sd=alts.length>1?Math.sqrt(alts.reduce((t,s)=>t+(s.alt-m)**2,0)/(alts.length-1)):0;
+    const aa=alts.map(s=>s.altAcc).filter(x=>x!=null).sort((a,b)=>a-b);
+    altAcc=aa.length?aa[Math.floor(aa.length/2)]:null;
+    if(altAcc==null)altAcc=Math.max(5,sd||0);
+  }
+  const hh=use.map(s=>s.hAcc).sort((a,b)=>a-b);
+  return{id:uid(),lat:la/wl,lon:lo/wl,alt,altAcc,hAcc:hh[Math.floor(hh.length/2)],n:use.length,sd,rl:null,note:'',t:Date.now(),manual:false};
+}
+function finishRec(){
+  const r=rec;clearInterval(r.timer);rec=null;
+  const pt=average(r.samples);
+  if(!pt){toast('No GPS readings came in. Move to open sky and try again.');renderLive();return}
+  pt.label=nextLabel();
+  S().points.push(pt);save();
+  try{navigator.vibrate&&navigator.vibrate(120)}catch(e){}
+  toast(pt.alt==null?`${pt.label} saved without altitude. Tap it to enter an RL.`:`${pt.label} saved from ${pt.n} readings`);
+  render();
+}
+
+/* ---------- render: live ---------- */
+function renderLive(){
+  const chip=$('#gpsChip');chip.className='chip';
+  const q=gpsState==='fix'?fixQuality(lastFix):null;
+  if(gpsState==='off'){chip.textContent='GPS off'}
+  else if(gpsState==='wait'){chip.textContent='Searching';chip.classList.add('warn','live')}
+  else{chip.textContent=q==='good'?'Good fix':q==='warn'?'Fair fix':'Weak fix';chip.classList.add(q,'live')}
+  $('#btnGps').textContent=watchId==null?'Start GPS':'Stop GPS';
+  const f=lastFix;
+  $('#roAlt').textContent=f&&f.alt!=null?fx(f.alt,1)+' m':(f?'n/a':'—');
+  $('#roV').textContent=f&&f.altAcc!=null?fx(f.altAcc,1)+' m':(f?'n/a':'—');
+  $('#roH').textContent=f?fx(f.hAcc,1)+' m':'—';
+  $('#roLL').textContent=f?`${f.lat.toFixed(6)}, ${f.lon.toFixed(6)}`+(f.alt==null?' · this phone gives no altitude, enter RLs manually':''):(gpsState==='wait'?'Waiting for satellites…':'Tap Start GPS and allow location access.');
+  document.querySelectorAll('#durSeg button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.d===dur)));
+  $('#recBox').hidden=!rec;
+  const btn=$('#btnRecord');
+  btn.disabled=!!rec;
+  btn.textContent=rec?'Recording…':(watchId==null?'Start GPS to record':'Record point '+nextLabel());
+  if(rec)tickRec();
+}
+
+/* ---------- render: points ---------- */
+function renderPoints(){
+  const s=S(),res=compute(s.points);
+  const byId={};res.rows.forEach((r,i)=>byId[r.p.id]={r,i});
+  $('#ptCount').textContent=s.points.length?`(${s.points.length})`:'';
+  if(!s.points.length){$('#ptList').innerHTML='<li class="empty">No points yet. Start GPS, stand at the top point and record P1.</li>';return}
+  $('#ptList').innerHTML=s.points.map(p=>{
+    const e=elev(p),info=byId[p.id];
+    const src=p.manual?'<span class="src rl">MANUAL</span>':hasRL(p)?'<span class="src rl">RL</span>':'<span class="src">GPS</span>';
+    const acc=hasRL(p)?'':(p.altAcc!=null?` ±${fx(p.altAcc,1)}`:'');
+    let right='<span class="note">start</span>';
+    if(info&&info.i>0)right=`${info.r.s==null?'—':(info.r.s>0?'+':'')+fx(info.r.s,2)+'%'}<small>${fx(info.r.d,1)} m from prev</small>`;
+    if(!info)right='<small style="color:var(--bad)">no elevation</small>';
+    return `<li><button class="pt" type="button" data-id="${p.id}">
+      <span class="lbl">${esc(p.label)}</span>
+      <span class="mid"><span class="el">${e==null?'—':fx(e,2)+' m'}<span class="note">${acc}</span></span>${src}
+      <span class="coords" style="display:block">${fx(p.lat,6)}, ${fx(p.lon,6)}${p.note?' · '+esc(p.note):''}</span></span>
+      <span class="seg-s">${right}</span></button></li>`;
+  }).join('');
+}
+$('#ptList').addEventListener('click',e=>{const b=e.target.closest('.pt');if(b)openEdit(b.dataset.id)});
+
+/* ---------- sheets ---------- */
+function openSheet(html){$('#sheet').innerHTML=html;$('#scrim').hidden=false;const f=$('#sheet').querySelector('input');if(f)setTimeout(()=>f.focus(),50)}
+function closeSheet(){$('#scrim').hidden=true;$('#sheet').innerHTML=''}
+$('#scrim').addEventListener('click',e=>{if(e.target.id==='scrim')closeSheet()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#scrim').hidden)closeSheet()});
+
+function openEdit(id){
+  const s=S(),i=s.points.findIndex(p=>p.id===id),p=s.points[i];if(!p)return;
+  openSheet(`
+    <div class="spread"><h2>Point ${esc(p.label)}</h2><button class="btn small" type="button" data-x="close">Close</button></div>
+    <div class="kv" style="margin-top:0">
+      <div><span>GPS altitude</span><b>${p.alt==null?'—':fx(p.alt,2)+' m'}</b></div>
+      <div><span>± Vertical</span><b>${p.altAcc==null?'—':fx(p.altAcc,1)+' m'}</b></div>
+      <div><span>Readings</span><b>${p.n||'—'}${p.sd!=null?' · σ '+fx(p.sd,1):''}</b></div>
+    </div>
+    <div class="coords">${fx(p.lat,7)}, ${fx(p.lon,7)} · ±${fx(p.hAcc,1)} m horizontal</div>
+    <div class="fgrid">
+      <label class="f">Label<input id="eLabel" type="text" value="${esc(p.label)}" maxlength="12"></label>
+      <label class="f">RL / elevation (m)<input id="eRl" type="number" inputmode="decimal" step="0.001" value="${hasRL(p)?esc(p.rl):''}" placeholder="blank = use GPS"></label>
+      <label class="f full">Note<input id="eNote" type="text" value="${esc(p.note)}" placeholder="e.g. nala bank, field corner"></label>
+    </div>
+    <div class="btngrid">
+      <button class="btn" type="button" data-x="up" ${i===0?'disabled':''}>Move up</button>
+      <button class="btn" type="button" data-x="down" ${i===s.points.length-1?'disabled':''}>Move down</button>
+      <button class="btn danger" type="button" data-x="del">Delete point</button>
+      <button class="btn primary" type="button" data-x="save">Save</button>
+    </div>`);
+  $('#sheet').onclick=e=>{
+    const b=e.target.closest('[data-x]');if(!b)return;const x=b.dataset.x;
+    if(x==='close')return closeSheet();
+    if(x==='up'||x==='down'){const j=x==='up'?i-1:i+1;[s.points[i],s.points[j]]=[s.points[j],s.points[i]];save();closeSheet();render();return}
+    if(x==='del'){
+      if(b.dataset.armed){s.points.splice(i,1);save();closeSheet();render();toast(p.label+' deleted');return}
+      b.dataset.armed='1';b.textContent='Tap again to delete';return;
+    }
+    if(x==='save'){
+      const lbl=$('#eLabel').value.trim()||p.label,rl=$('#eRl').value.trim();
+      if(rl!==''&&!isFinite(+rl)){toast('RL must be a number in metres');return}
+      if(rl===''&&p.manual){toast('A manual point needs an elevation');return}
+      p.label=lbl;p.rl=rl===''?null:+rl;p.note=$('#eNote').value.trim();
+      save();closeSheet();render();toast('Saved');
+    }
+  };
+}
+$('#btnAddManual').addEventListener('click',()=>{
+  if(S().example){toast('Start a new survey first');setTab('surveys');return}
+  const f=lastFix;
+  openSheet(`
+    <div class="spread"><h2>Enter a point</h2><button class="btn small" type="button" data-x="close">Close</button></div>
+    <p class="note" style="margin:0">For points read from Google Earth, a toposheet or an auto level.${f?' Position is pre-filled from the live GPS.':''}</p>
+    <div class="fgrid">
+      <label class="f">Label<input id="mLabel" type="text" value="${nextLabel()}" maxlength="12"></label>
+      <label class="f">Elevation (m)<input id="mEl" type="number" inputmode="decimal" step="0.001"></label>
+      <label class="f">Latitude<input id="mLat" type="number" inputmode="decimal" step="0.000001" value="${f?f.lat.toFixed(6):''}"></label>
+      <label class="f">Longitude<input id="mLon" type="number" inputmode="decimal" step="0.000001" value="${f?f.lon.toFixed(6):''}"></label>
+      <label class="f full">Note<input id="mNote" type="text"></label>
+    </div>
+    <button class="btn primary wide" type="button" data-x="add">Add point</button>`);
+  $('#sheet').onclick=e=>{
+    const b=e.target.closest('[data-x]');if(!b)return;
+    if(b.dataset.x==='close')return closeSheet();
+    const lat=+$('#mLat').value,lon=+$('#mLon').value,el=$('#mEl').value.trim();
+    if(!$('#mLat').value||!$('#mLon').value||Math.abs(lat)>90||Math.abs(lon)>180){toast('Enter latitude and longitude in decimal degrees');return}
+    if(el===''||!isFinite(+el)){toast('Enter the elevation in metres');return}
+    S().points.push({id:uid(),label:$('#mLabel').value.trim()||nextLabel(),lat,lon,alt:null,altAcc:null,hAcc:null,n:0,sd:null,rl:+el,note:$('#mNote').value.trim(),t:Date.now(),manual:true});
+    save();closeSheet();render();toast('Point added');
+  };
 });
+
+/* ---------- render: result ---------- */
+function pick(res){return res[method]||res.e2e}
+function renderResult(){
+  const s=S(),res=compute(s.points),hero=$('#resHero');
+  if(res.n<2){
+    hero.innerHTML=`<h2>Slope</h2><p class="empty">Record at least two points with elevation to see the slope.${res.skipped?` ${res.skipped} point(s) have no elevation yet.`:''}</p>`;
+    $('#clsTable').innerHTML=classesHtml(null);$('#segTable').innerHTML='';
+    drawProfile(res);drawPlan(res);return;
+  }
+  if(method==='fit'&&!res.fit)method='e2e';
+  const m=pick(res),rel=reliability(m),cl=classOf(m.s);
+  const first=res.rows[0].p.label,last=res.rows[res.rows.length-1].p.label;
+  const dir=m.dh<0?'fall':'rise';
+  hero.innerHTML=`
+    <div class="spread" style="margin-bottom:10px">
+      <div class="seg" id="methSeg" role="group" aria-label="Slope method">
+        <button type="button" data-m="e2e" aria-pressed="${method==='e2e'}">End to end</button>
+        <button type="button" data-m="fit" aria-pressed="${method==='fit'}" ${res.fit?'':'disabled'}>Best fit</button>
+        <button type="button" data-m="route" aria-pressed="${method==='route'}">Route</button>
+      </div>
+      ${rel?`<span class="chip ${rel.k}">${rel.t}</span>`:''}
+    </div>
+    <div class="hero">
+      <div><div class="big num">${fx(Math.abs(m.s),2)}<small> %</small></div>
+      <div class="pm">± ${fx(m.u,2)} % · ${dir} from ${esc(first)} to ${esc(last)}</div></div>
+      <div style="text-align:right"><div class="num" style="font-size:1.3rem">${fx(deg(m.s),2)}°</div><div class="note">${oneIn(m.s)}</div></div>
+    </div>
+    <div class="kv">
+      <div><span>Horiz. distance</span><b>${fx(m.d,1)} m</b></div>
+      <div><span>Height diff.</span><b>${m.dh>0?'+':''}${fx(m.dh,2)} m</b></div>
+      <div><span>Points</span><b>${res.n}${res.skipped?' (+'+res.skipped+')':''}</b></div>
+    </div>
+    <div class="cls"><div class="letter">${cl.c}</div><div><b>${cl.name}</b> <span class="note num">${cl.lo}–${isFinite(cl.hi)?cl.hi:'∞'}%</span><div class="note">${cl.tr}</div></div></div>
+    ${rel&&rel.k==='bad'?`<div class="msg bad">The GPS height error (±${fx(m.u,1)} %) is too large for this slope over ${fx(m.d,0)} m. Spread the points further apart or type RLs from an auto level into the points.</div>`:''}
+    <p class="note" style="margin:10px 0 0">${methodNote(method,res)}</p>`;
+  $('#methSeg').onclick=e=>{const b=e.target.closest('button');if(!b||b.disabled)return;method=b.dataset.m;saveUi();renderResult()};
+  $('#clsTable').innerHTML=classesHtml(cl.c);
+  $('#segTable').innerHTML=tableHtml(res);
+  $('#lgFit').hidden=!res.fit;
+  drawProfile(res);drawPlan(res);
+}
+function methodNote(m,res){
+  if(m==='fit')return`Straight line fitted through all ${res.n} points against chainage (R² ${fx(res.fit.r2,2)}). Best when you record several points along one line.`;
+  if(m==='route')return'Height difference between first and last point divided by the walked distance along all points.';
+  return'Height difference between first and last point divided by the straight horizontal distance between them.';
+}
+function classesHtml(on){
+  return CLASSES.map(c=>`<div class="${c.c===on?'on':''}"><b>${c.c}</b><span class="r">${c.lo}–${isFinite(c.hi)?c.hi:'>'+c.lo}%</span><span>${c.name}<br><span class="note">${c.tr}</span></span></div>`).join('');
+}
+function tableHtml(res){
+  let h='<thead><tr><th>Point</th><th>Elev. m</th><th>±m</th><th>Chainage m</th><th>Dist m</th><th>Δh m</th><th>Slope %</th></tr></thead><tbody>';
+  res.rows.forEach((r,i)=>{
+    h+=`<tr><td>${esc(r.p.label)}</td><td>${fx(r.e,2)}</td><td>${hasRL(r.p)?'RL':fx(r.sg,1)}</td><td>${fx(r.ch,1)}</td><td>${i?fx(r.d,1):''}</td><td>${i?(r.dh>0?'+':'')+fx(r.dh,2):''}</td><td>${i&&r.s!=null?(r.s>0?'+':'')+fx(r.s,2):''}</td></tr>`;
+  });
+  [res.e2e,res.fit,res.route].filter(Boolean).forEach(m=>{
+    h+=`<tr class="methods"><td>${m.name}</td><td></td><td></td><td></td><td>${fx(m.d,1)}</td><td>${(m.dh>0?'+':'')+fx(m.dh,2)}</td><td>${(m.s>0?'+':'')+fx(m.s,2)} ±${fx(m.u,2)}</td></tr>`;
+  });
+  return h+'</tbody>';
+}
+
+/* ---------- charts ---------- */
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function niceTicks(min,max,n){
+  const span=(max-min)||1,step0=span/n,mag=Math.pow(10,Math.floor(Math.log10(step0))),e=step0/mag;
+  const step=(e>=7.5?10:e>=3.5?5:e>=1.5?2:1)*mag,t=[];
+  for(let v=Math.ceil(min/step)*step;v<=max+step*1e-6;v+=step)t.push(+v.toFixed(8));
+  return{t,step};
+}
+function prep(cv,h){
+  const dpr=window.devicePixelRatio||1,w=cv.clientWidth||300;
+  cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);cv.style.height=h+'px';
+  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+  return{g,w,h};
+}
+const fontData=s=>`${s}px "IBM Plex Mono", ui-monospace, monospace`;
+function emptyMsg(g,w,h,t){g.fillStyle=css('--muted');g.font='14px system-ui, sans-serif';g.textAlign='center';g.fillText(t,w/2,h/2)}
+function drawProfile(res){
+  const cv=$('#cvProfile');if(tab!=='result')return;
+  const{g,w,h}=prep(cv,240);
+  if(res.n<2)return emptyMsg(g,w,h,'Needs two points with elevation');
+  const L=50,Rr=12,T=14,B=30,pw=w-L-Rr,ph=h-T-B;
+  const xs=res.rows.map(r=>r.ch),ys=res.rows.map(r=>r.e);
+  let y0=Math.min(...ys),y1=Math.max(...ys);const pad=Math.max((y1-y0)*0.15,1);y0-=pad;y1+=pad;
+  const x1=Math.max(...xs)||1;
+  const X=v=>L+v/x1*pw,Y=v=>T+(1-(v-y0)/(y1-y0))*ph;
+  const ink=css('--ink'),muted=css('--muted'),line=css('--line'),field=css('--field'),soft=css('--field-soft'),acc=css('--accent');
+  g.font=fontData(10);g.lineWidth=1;
+  const yt=niceTicks(y0,y1,4);g.textAlign='right';g.textBaseline='middle';
+  yt.t.forEach(v=>{g.strokeStyle=line;g.beginPath();g.moveTo(L,Y(v));g.lineTo(L+pw,Y(v));g.stroke();g.fillStyle=muted;g.fillText(v.toFixed(yt.step<1?1:0),L-6,Y(v))});
+  const xt=niceTicks(0,x1,4);g.textAlign='center';g.textBaseline='top';
+  xt.t.forEach(v=>{g.fillStyle=muted;g.fillText(v.toFixed(0),X(v),T+ph+6)});
+  g.textAlign='left';g.fillText('m',L+pw-6,T+ph+18>h-10?T+ph+6:T+ph+18);
+  g.save();g.beginPath();g.rect(L,T,pw,ph);g.clip();
+  g.beginPath();g.moveTo(X(xs[0]),T+ph);res.rows.forEach(r=>g.lineTo(X(r.ch),Y(r.e)));g.lineTo(X(xs[xs.length-1]),T+ph);g.closePath();g.fillStyle=soft;g.fill();
+  g.strokeStyle=muted;g.lineWidth=1;
+  res.rows.forEach(r=>{if(hasRL(r.p))return;g.beginPath();g.moveTo(X(r.ch),Y(r.e-r.sg));g.lineTo(X(r.ch),Y(r.e+r.sg));g.stroke()});
+  if(res.fit){g.setLineDash([6,4]);g.strokeStyle=acc;g.lineWidth=2;g.beginPath();g.moveTo(X(0),Y(res.fit.a));g.lineTo(X(x1),Y(res.fit.a+res.fit.b*x1));g.stroke();g.setLineDash([])}
+  g.strokeStyle=field;g.lineWidth=2.2;g.beginPath();res.rows.forEach((r,i)=>i?g.lineTo(X(r.ch),Y(r.e)):g.moveTo(X(r.ch),Y(r.e)));g.stroke();
+  g.restore();
+  res.rows.forEach(r=>{
+    g.fillStyle=css('--surface');g.strokeStyle=field;g.lineWidth=2;g.beginPath();g.arc(X(r.ch),Y(r.e),4.5,0,7);g.fill();g.stroke();
+    g.fillStyle=ink;g.font='600 11px "Barlow Semi Condensed", system-ui, sans-serif';g.textAlign='center';g.textBaseline='bottom';
+    g.fillText(r.p.label,Math.min(Math.max(X(r.ch),L+10),L+pw-10),Math.max(Y(r.e)-7,T+10));
+  });
+  g.strokeStyle=ink;g.lineWidth=1;g.beginPath();g.moveTo(L,T);g.lineTo(L,T+ph);g.lineTo(L+pw,T+ph);g.stroke();
+}
+function drawPlan(res){
+  const cv=$('#cvPlan');if(tab!=='result')return;
+  const pts=S().points.filter(p=>isFinite(p.lat)&&isFinite(p.lon));
+  const{g,w,h}=prep(cv,220);
+  if(pts.length<2)return emptyMsg(g,w,h,'Needs two points');
+  const lat0=pts[0].lat,lon0=pts[0].lon,k=Math.PI/180*R_EARTH;
+  const P=pts.map(p=>({p,x:(p.lon-lon0)*k*Math.cos(rad(lat0)),y:(p.lat-lat0)*k}));
+  const minx=Math.min(...P.map(q=>q.x)),maxx=Math.max(...P.map(q=>q.x)),miny=Math.min(...P.map(q=>q.y)),maxy=Math.max(...P.map(q=>q.y));
+  const m=34,sc=Math.min((w-2*m)/Math.max(maxx-minx,1),(h-2*m)/Math.max(maxy-miny,1));
+  const ox=(w-(maxx-minx)*sc)/2,oy=(h-(maxy-miny)*sc)/2;
+  const X=x=>ox+(x-minx)*sc,Y=y=>h-oy-(y-miny)*sc;
+  const ink=css('--ink'),muted=css('--muted'),field=css('--field'),acc=css('--accent');
+  g.strokeStyle=field;g.lineWidth=2;g.beginPath();P.forEach((q,i)=>i?g.lineTo(X(q.x),Y(q.y)):g.moveTo(X(q.x),Y(q.y)));g.stroke();
+  P.forEach((q,i)=>{
+    g.fillStyle=i===0?acc:css('--surface');g.strokeStyle=field;g.lineWidth=2;g.beginPath();g.arc(X(q.x),Y(q.y),i===0?6:4.5,0,7);g.fill();g.stroke();
+    g.fillStyle=ink;g.font='600 11px "Barlow Semi Condensed", system-ui, sans-serif';g.textAlign='left';g.textBaseline='middle';
+    const tx=X(q.x)+8;g.fillText(q.p.label,tx>w-24?X(q.x)-26:tx,Y(q.y)-8);
+  });
+  // north arrow
+  g.strokeStyle=ink;g.fillStyle=ink;g.lineWidth=1.5;g.beginPath();g.moveTo(w-18,40);g.lineTo(w-18,16);g.stroke();
+  g.beginPath();g.moveTo(w-18,10);g.lineTo(w-23,20);g.lineTo(w-13,20);g.closePath();g.fill();
+  g.font='600 11px system-ui, sans-serif';g.textAlign='center';g.fillText('N',w-18,50);
+  // scale bar
+  const target=(w*0.3)/sc,nt=niceTicks(0,target,1).step,len=nt*sc;
+  g.strokeStyle=muted;g.lineWidth=2;g.beginPath();g.moveTo(12,h-12);g.lineTo(12+len,h-12);g.moveTo(12,h-16);g.lineTo(12,h-8);g.moveTo(12+len,h-16);g.lineTo(12+len,h-8);g.stroke();
+  g.fillStyle=muted;g.font=fontData(10);g.textAlign='left';g.textBaseline='bottom';g.fillText(nt>=1000?(nt/1000)+' km':nt+' m',14,h-17);
+}
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if(tab==='result'){const r=compute(S().points);drawProfile(r);drawPlan(r)}},150)});
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>tab==='result'&&renderResult())}catch(e){}
+try{new MutationObserver(()=>tab==='result'&&renderResult()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']})}catch(e){}
+
+/* ---------- export ---------- */
+function summaryText(){
+  const s=S(),res=compute(s.points);
+  const L=[`Slope survey: ${s.name}${s.site?' ('+s.site+')':''}`,`Date: ${new Date(s.created).toLocaleDateString('en-IN')}${s.by?' · Surveyor: '+s.by:''}`];
+  if(res.n<2){L.push('Not enough points with elevation.');return L.join('\n')}
+  const a=res.rows[0].p.label,b=res.rows[res.rows.length-1].p.label;
+  L.push(`Points: ${res.n} · route length ${fx(res.route.d,1)} m`);
+  [res.e2e,res.fit,res.route].filter(Boolean).forEach(m=>{const r=reliability(m);L.push(`${m.name}: ${fx(Math.abs(m.s),2)} % (${fx(deg(m.s),2)}°, ${oneIn(m.s)}) ${m.dh<0?'fall':'rise'} ${a}→${b}, ±${fx(m.u,2)} %${r?' ['+r.t+']':''}`)});
+  const cl=classOf(pick(res).s);
+  L.push(`Slope class: ${cl.c} – ${cl.name} (${cl.lo}–${isFinite(cl.hi)?cl.hi:'>'+cl.lo}%)`,`Typical treatment: ${cl.tr}`);
+  if(s.rem)L.push('Remarks: '+s.rem);
+  return L.join('\n');
+}
+const csvq=v=>{const t=v==null?'':String(v);return/[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t};
+function csvText(){
+  const s=S(),res=compute(s.points),map={};res.rows.forEach((r,i)=>map[r.p.id]={r,i});
+  const out=[['Survey',s.name],['Site',s.site],['Surveyor',s.by],['Date',new Date(s.created).toLocaleString('en-IN')]];
+  [res.e2e,res.fit,res.route].filter(Boolean).forEach(m=>out.push([m.name+' slope %',fx(m.s,3),'± %',fx(m.u,3),'Distance m',fx(m.d,2),'dH m',fx(m.dh,3)]));
+  out.push([]);
+  out.push(['Point','Latitude','Longitude','GPS_Alt_m','Vert_Acc_m','Horiz_Acc_m','Readings','Alt_SD_m','RL_m','Elevation_used_m','Chainage_m','Seg_Dist_m','Seg_dH_m','Seg_Slope_pct','Source','Note']);
+  s.points.forEach(p=>{const m=map[p.id],r=m&&m.r;
+    out.push([p.label,fx(p.lat,7),fx(p.lon,7),p.alt==null?'':fx(p.alt,3),p.altAcc==null?'':fx(p.altAcc,2),p.hAcc==null?'':fx(p.hAcc,2),p.n||'',p.sd==null?'':fx(p.sd,2),hasRL(p)?p.rl:'',r?fx(r.e,3):'',r?fx(r.ch,2):'',r&&m.i?fx(r.d,2):'',r&&m.i?fx(r.dh,3):'',r&&m.i&&r.s!=null?fx(r.s,3):'',p.manual?'Manual':hasRL(p)?'RL':'GPS',p.note]);
+  });
+  return out.map(r=>r.map(csvq).join(',')).join('\n');
+}
+function kmlText(){
+  const s=S(),x=t=>esc(t);
+  const pm=s.points.map(p=>`<Placemark><name>${x(p.label)}</name><description>Elevation ${fx(elev(p),2)} m${p.note?' · '+x(p.note):''}</description><Point><coordinates>${p.lon},${p.lat},0</coordinates></Point></Placemark>`).join('');
+  const ln=s.points.map(p=>`${p.lon},${p.lat},0`).join(' ');
+  return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${x(s.name)}</name><Style id="l"><LineStyle><color>ff08a0e2</color><width>3</width></LineStyle></Style>${pm}<Placemark><name>Slope line</name><styleUrl>#l</styleUrl><LineString><tessellate>1</tessellate><coordinates>${ln}</coordinates></LineString></Placemark></Document></kml>`;
+}
+const fname=ext=>(S().name||'slope_survey').replace(/[^\w\-]+/g,'_').slice(0,40)+'.'+ext;
+let dlCap=null;
+try{if(window.claude&&typeof window.claude.use==='function')window.claude.use('downloads').then(x=>{dlCap=x}).catch(()=>{})}catch(e){}
+async function download(text,name,type){
+  if(dlCap){
+    try{const r=await dlCap.save({filename:name,data:new Blob([text],{type})});if(r&&r.status==='saved')toast(name+' saved');}
+    catch(e){toast(e&&e.code==='unavailable'?'Download is not available here. Use Copy CSV.':'Download cancelled')}
+    return;
+  }
+  try{
+    const url=URL.createObjectURL(new Blob([text],{type}));
+    const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    toast('Saving '+name+' · if nothing downloads, use Copy CSV');
+  }catch(e){toast('Download is blocked here. Use Copy instead.')}
+}
+async function copy(text,what){
+  try{await navigator.clipboard.writeText(text);toast(what+' copied');}
+  catch(e){
+    openSheet(`<div class="spread"><h2>${esc(what)}</h2><button class="btn small" type="button" data-x="close">Close</button></div><p class="note" style="margin:0">Copy is blocked here. Select the text below and copy it.</p><label class="f"><textarea id="cpTxt" rows="10" readonly>${esc(text)}</textarea></label>`);
+    $('#sheet').onclick=ev=>{if(ev.target.closest('[data-x]'))closeSheet()};
+    const t=$('#cpTxt');t.focus();t.select();
+  }
+}
+$('#btnCopySum').addEventListener('click',()=>copy(summaryText(),'Summary'));
+$('#btnCopyCsv').addEventListener('click',()=>copy(csvText(),'CSV'));
+$('#btnCsv').addEventListener('click',()=>download('﻿'+csvText(),fname('csv'),'text/csv'));
+$('#btnKml').addEventListener('click',()=>download(kmlText(),fname('kml'),'application/vnd.google-earth.kml+xml'));
+
+/* ---------- surveys ---------- */
+['fName','fSite','fBy','fRem'].forEach(id=>$('#'+id).addEventListener('input',e=>{
+  const k={fName:'name',fSite:'site',fBy:'by',fRem:'rem'}[id];S()[k]=e.target.value;save();renderHeader();
+}));
+function startNew(){
+  if(rec)cancelRec();
+  Object.keys(db.surveys).forEach(k=>{if(db.surveys[k].example)delete db.surveys[k]});
+  const s=newSurvey(false);db.surveys[s.id]=s;
+  db.cur=s.id;save();setTab('survey');toast('New survey started · record P1 at the top point');
+}
+$('#btnNew').addEventListener('click',startNew);
+$('#bannerNew').addEventListener('click',startNew);
+function renderSurveys(){
+  const s=S();
+  [['fName','name'],['fSite','site'],['fBy','by'],['fRem','rem']].forEach(([id,k])=>{const el=$('#'+id);if(document.activeElement!==el)el.value=s[k]||''});
+  const list=Object.values(db.surveys).sort((a,b)=>b.created.localeCompare(a.created));
+  $('#svList').innerHTML=list.map(v=>{
+    const r=compute(v.points),m=r.e2e;
+    return `<li><div style="min-width:0"><div class="t ${v.id===db.cur?'cur':''}">${esc(v.name)}${v.id===db.cur?' · open':''}</div>
+      <div class="note">${esc(v.site||'—')} · ${new Date(v.created).toLocaleDateString('en-IN')} · ${v.points.length} pts${m?' · '+fx(Math.abs(m.s),2)+'%':''}</div></div>
+      <div class="row">${v.id!==db.cur?`<button class="btn small" type="button" data-open="${v.id}">Open</button>`:''}<button class="btn small danger" type="button" data-del="${v.id}">Delete</button></div></li>`;
+  }).join('');
+}
+$('#svList').addEventListener('click',e=>{
+  const o=e.target.closest('[data-open]'),d=e.target.closest('[data-del]');
+  if(o){if(rec)cancelRec();db.cur=o.dataset.open;save();render();toast('Survey opened');return}
+  if(d){
+    if(!d.dataset.armed){d.dataset.armed='1';d.textContent='Confirm';setTimeout(()=>{if(d.isConnected){delete d.dataset.armed;d.textContent='Delete'}},3500);return}
+    const id=d.dataset.del;delete db.surveys[id];
+    if(!Object.keys(db.surveys).length){const s=newSurvey(false);db.surveys[s.id]=s}
+    if(!db.surveys[db.cur])db.cur=Object.values(db.surveys).sort((a,b)=>b.created.localeCompare(a.created))[0].id;
+    save();render();toast('Survey deleted');
+  }
+});
+
+/* ---------- master render ---------- */
+function renderHeader(){
+  const s=S();
+  $('#hdrSurvey').textContent=s.name+(s.site?' · '+s.site:'');
+  $('#exampleBanner').hidden=!s.example;
+}
+function render(){
+  renderHeader();renderLive();
+  if(tab==='survey')renderPoints();
+  if(tab==='result')renderResult();
+  if(tab==='surveys')renderSurveys();
+}
+render();
+(function(){const env=envProblem();if(env)showMsg(env.t,!!env.hard)})();
+})();
 </script>
-</body>
-</html>
+
+</body></html>
