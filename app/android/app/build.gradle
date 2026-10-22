@@ -1,0 +1,53 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace = "org.dsc.gps_slope_survey"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        applicationId = "org.dsc.gps_slope_survey"
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    // One fixed key for every build, so a new APK installs over the old one
+    // and the surveys saved on the phone are kept.
+    signingConfigs {
+        field {
+            storeFile = file("field-release.jks")
+            storePassword = "slopesurvey"
+            keyAlias = "slope"
+            keyPassword = "slopesurvey"
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.field
+        }
+        debug {
+            signingConfig = signingConfigs.field
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}

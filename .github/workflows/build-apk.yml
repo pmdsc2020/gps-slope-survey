@@ -1,0 +1,135 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Dart errors show up here first, with file and line.
+      - name: Analyze
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee analyze.log
+
+      - name: Show analyze results on the run summary
+        if: always()
+        run: |
+          if [ -f analyze.log ]; then
+            msg=$( { grep -E '(error|warning) •' analyze.log | cut -c1-230 | head -40; } || true )
+            [ -n "$msg" ] || msg=$(tail -3 analyze.log)
+            msg=$(printf '%s' "$msg" | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::notice title=flutter analyze::$msg"
+          fi
+
+      - name: Unit tests (slope maths)
+        run: |
+          set -o pipefail
+          flutter test test/slope_test.dart 2>&1 | tee unit.log
+
+      # Renders every screen at phone size. Reports any layout overflow. Does not block the APK.
+      - name: Screens test
+        if: always()
+        continue-on-error: true
+        env:
+          SHOTS: '1'
+        run: |
+          set -o pipefail
+          FR=$(dirname "$(dirname "$(readlink -f "$(which flutter)")")")
+          export MATERIAL_ICONS=$(find "$FR" -name 'MaterialIcons-Regular.otf' -print -quit 2>/dev/null || true)
+          export FALLBACK_FONT=$(fc-match -f '%{file}' 'DejaVu Sans' 2>/dev/null || echo /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf)
+          flutter test test/shots_test.dart 2>&1 | tee test.log
+
+      - name: Upload screen images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screens
+          path: app/shots/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Show test results on the run summary
+        if: always()
+        run: |
+          for f in unit.log test.log; do
+            if [ -f $f ]; then
+              echo "::notice title=$f::$(tail -3 $f | tr '\n' ' ' | cut -c1-300)"
+              msg=$( { grep -E "Error:|error:|Expected:|Actual:|Some tests failed|isn't defined|isn't a|EXCEPTION" $f | cut -c1-260 | head -25; grep -E -A2 "overflowed by|relevant error-causing widget" $f | cut -c1-260 | head -30; } || true )
+              if [ -n "$msg" ]; then
+                msg=$(printf '%s' "$msg" | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+                echo "::error title=$f::$msg"
+              fi
+            fi
+          done
+
+      - name: Build APK
+        run: |
+          set -o pipefail
+          flutter build apk --release --build-number=${{ github.run_number }} --android-skip-build-dependency-validation 2>&1 | tee build.log
+          cp build/app/outputs/flutter-apk/app-release.apk gps-slope-survey.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gps-slope-survey-apk
+          path: app/gps-slope-survey.apk
+          retention-days: 30
+
+      # One fixed download link that always has the newest APK:
+      # https://github.com/<owner>/<repo>/releases/download/apk/gps-slope-survey.apk
+      - name: Publish APK to the "apk" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="GPS Slope Survey Android app. Build ${{ github.run_number }} from commit ${GITHUB_SHA::7}. Install over the previous version; saved surveys are kept."
+          if gh release view apk >/dev/null 2>&1; then
+            gh release edit apk --title "GPS Slope Survey APK (build ${{ github.run_number }})" --notes "$notes"
+          else
+            gh release create apk --title "GPS Slope Survey APK (build ${{ github.run_number }})" --notes "$notes" --target "$GITHUB_SHA"
+          fi
+          gh release upload apk gps-slope-survey.apk --clobber
+
+      - name: Show errors on the run summary
+        if: failure()
+        run: |
+          if [ -f analyze.log ]; then
+            msg=$( { grep -E 'error •' analyze.log | head -40; } || true )
+            [ -n "$msg" ] || msg=$(tail -30 analyze.log)
+            msg=$(printf '%s' "$msg" | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=flutter analyze::$msg"
+          fi
+          if [ -f build.log ]; then
+            msg=$(tail -80 build.log | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=flutter build apk::$msg"
+          fi
