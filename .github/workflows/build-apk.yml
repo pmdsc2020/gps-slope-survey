@@ -120,6 +120,24 @@ jobs:
           fi
           gh release upload apk gps-slope-survey.apk --clobber
 
+      # Screens and APK also go to the build-output branch (one commit, replaced each build),
+      # so they can be fetched with plain git.
+      - name: Push screens and APK to the build-output branch
+        if: always()
+        continue-on-error: true
+        run: |
+          rm -rf /tmp/out && mkdir -p /tmp/out/shots
+          cp shots/*.png /tmp/out/shots/ 2>/dev/null || true
+          cp gps-slope-survey.apk /tmp/out/ 2>/dev/null || true
+          cp analyze.log test.log unit.log /tmp/out/ 2>/dev/null || true
+          cd /tmp/out
+          git init -q -b build-output
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Build ${{ github.run_number }} from ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" build-output
+
       - name: Show errors on the run summary
         if: failure()
         run: |

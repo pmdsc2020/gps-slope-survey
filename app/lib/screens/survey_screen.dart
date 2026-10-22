@@ -546,7 +546,8 @@ class _Connector extends StatelessWidget {
             child: Center(child: Container(width: 3, color: p.field.withOpacity(0.45))),
           ),
           if (row != null && s != null)
-            Container(
+            Flexible(
+              child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: p.surface,
@@ -561,10 +562,15 @@ class _Connector extends StatelessWidget {
                   Icon(fall ? Icons.south_east_rounded : Icons.north_east_rounded, size: 16, color: p.ink),
                   const SizedBox(width: 4),
                   Text('${signed(s, 2)} %', style: T.num(p.ink, size: 14, w: FontWeight.w700)),
-                  Text('  ·  ${fx(row!.dist, 1)} m  ·  Δh ${signed(row!.dh, 2)} m',
-                      style: T.num(p.muted, size: 13, w: FontWeight.w500)),
+                  Flexible(
+                    child: Text('  ·  ${fx(row!.dist, 1)} m  ·  Δh ${signed(row!.dh, 2)} m',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: T.num(p.muted, size: 13, w: FontWeight.w500)),
+                  ),
                 ],
               ),
+            ),
             )
           else
             Text('no elevation', style: T.small(p.bad)),

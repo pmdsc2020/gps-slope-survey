@@ -15,6 +15,10 @@ dependencies:
   share_plus: ^7.2.1
   provider: ^6.1.2
 
+# geolocator_android 4.6.2+ needs Flutter 3.27's Gradle plugin; this build uses Flutter 3.24.5.
+dependency_overrides:
+  geolocator_android: 4.6.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

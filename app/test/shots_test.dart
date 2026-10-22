@@ -148,7 +148,8 @@ void main() {
     await _shot(tester, '00_splash_mid');
     await tester.pump(const Duration(milliseconds: 900));
     await _shot(tester, '00_splash_end');
-    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
     expect(find.byType(Shell), findsOneWidget);
   }, skip: !_enabled);
 
