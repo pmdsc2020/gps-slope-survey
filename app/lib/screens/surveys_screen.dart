@@ -257,19 +257,7 @@ class _SurveyCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(children: [
-                      Flexible(
-                        child: Text(survey.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.head(p.ink)),
-                      ),
-                      if (current) ...[
-                        const SizedBox(width: 6),
-                        Chip2(text: 'Open', color: p.field),
-                      ],
-                      if (survey.example) ...[
-                        const SizedBox(width: 6),
-                        Chip2(text: 'Example', color: p.warn),
-                      ],
-                    ]),
+                    Text(survey.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.head(p.ink)),
                     const SizedBox(height: 2),
                     Text(
                       '${survey.site.isEmpty ? '' : '${survey.site} · '}$date · ${survey.points.length} pts',
@@ -277,6 +265,13 @@ class _SurveyCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: T.small(p.muted),
                     ),
+                    if (current || survey.example) ...[
+                      const SizedBox(height: 6),
+                      Wrap(spacing: 6, children: [
+                        if (current) Chip2(text: 'Open', color: p.field),
+                        if (survey.example) Chip2(text: 'Example', color: p.warn),
+                      ]),
+                    ],
                   ],
                 ),
               ),

@@ -2,9 +2,17 @@
 
 Mobile field app for measuring land slope from GPS points taken on the phone. Built for watershed and soil and water conservation planning.
 
-**Live app:** https://pmdsc2020.github.io/gps-slope-survey/
+**Android app (APK):** https://github.com/pmdsc2020/gps-slope-survey/releases/download/apk/gps-slope-survey.apk
 
-Open the link in Chrome on an Android phone, tap **Start GPS** and allow location access. After the first load the app works offline in the field.
+**Web version:** https://pmdsc2020.github.io/gps-slope-survey/
+
+## Install the Android app
+
+1. Open the APK link above on the phone and download it.
+2. Open the downloaded file. If Android asks, allow your browser or Files app to **install unknown apps**.
+3. Open **Slope Survey**, tap **Start** and choose **While using the app** for location.
+
+A new build installs over the old one, and saved surveys are kept. The APK is rebuilt by GitHub Actions each time the code in `app/` changes.
 
 ## What it does
 
@@ -30,7 +38,9 @@ Phone GPS height is usually only accurate to about ±3–15 m. On gentle land ke
 
 ## Files
 
-- `index.html` — the GPS Slope Survey field app
+- `app/` — the Flutter Android app (source, logo, Android project, screen tests)
+- `app/brand/` — logo source (`make_logo.py`) and the script that renders the launcher icons
+- `index.html` — the web version of the field app
 - `simple-calculator.html` — earlier calculator where points are typed in as `latitude, longitude, elevation`
 
 ---

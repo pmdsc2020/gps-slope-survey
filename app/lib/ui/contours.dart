@@ -92,8 +92,6 @@ class ContourPainter extends CustomPainter {
       path.close();
       canvas.drawPath(path, k % 5 == 0 ? thick : thin);
     }
-    // summit marker
-    canvas.drawCircle(c, 2.4, Paint()..color = label.withOpacity(0.5));
   }
 
   @override

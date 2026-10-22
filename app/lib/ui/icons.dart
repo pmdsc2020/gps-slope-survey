@@ -106,7 +106,7 @@ class _NavPainter extends CustomPainter {
         canvas.drawCircle(top, selected ? 2.4 : 1.8, fill);
       case NavGlyph.surveys:
         // field sheets fan out
-        final f = selected ? Curves.easeOutBack.transform(v) : 0.0;
+        final f = selected ? Curves.easeOutBack.transform(v) : 0.45;
         for (var i = 0; i < 3; i++) {
           canvas.save();
           canvas.translate(12, 20);

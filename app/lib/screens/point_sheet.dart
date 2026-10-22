@@ -99,7 +99,7 @@ class _PointSheetState extends State<_PointSheet> {
                       Expanded(
                           child: Stat(
                               label: 'Readings',
-                              value: pt.n == 0 ? '—' : '${pt.n}${pt.sd != null ? '  σ ${pt.sd!.toStringAsFixed(1)}' : ''}')),
+                              value: pt.n == 0 ? '—' : '${pt.n}${pt.sd != null ? '  SD ${pt.sd!.toStringAsFixed(1)}' : ''}')),
                     ],
                   ),
                   const SizedBox(height: 10),

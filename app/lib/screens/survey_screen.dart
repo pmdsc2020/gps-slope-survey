@@ -192,8 +192,8 @@ class _LiveBand extends StatelessWidget {
       GpsState.error => 'GPS could not start',
       GpsState.fix => switch (q) {
           FixQuality.good => 'Good fix',
-          FixQuality.fair => 'Fair fix · wait for green',
-          _ => 'Weak fix · move to open sky',
+          FixQuality.fair => 'Fair fix',
+          _ => 'Weak fix · open sky',
         },
     };
     final statusColor = switch (gps.state) {
@@ -425,7 +425,7 @@ class _GpsHelp extends StatelessWidget {
         ),
       GpsIssue.deniedForever => (
           'Location permission is blocked',
-          'Open the app settings, choose Permissions → Location → Allow, and turn on "Use precise location".',
+          'Open the app settings, choose Permissions, then Location, then Allow, and turn on "Use precise location".',
           'Open app settings',
           gps.openAppSettings,
         ),
