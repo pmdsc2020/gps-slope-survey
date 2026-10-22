@@ -1,0 +1,11 @@
+
+✅ one arc-minute of latitude is about 1853 m
+✅ example transect matches the web app
+✅ typed RL overrides GPS height
+✅ points without elevation are skipped
+✅ averaging drops bad readings and weights the rest
+✅ class dial position rises with slope
+✅ one in n and degrees
+✅ exports carry every point
+
+🎉 8 tests passed.

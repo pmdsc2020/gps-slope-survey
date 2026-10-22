@@ -1,0 +1,8 @@
+Analyzing app...                                                
+
+   info • Use 'const' for final variables initialized to a constant value • lib/ui/charts.dart:318:5 • prefer_const_declarations
+   info • The parameter name 'old' doesn't match the name 'oldDelegate' in the overridden method • lib/ui/contours.dart:98:37 • avoid_renaming_method_parameters
+   info • The parameter name 'o' doesn't match the name 'oldDelegate' in the overridden method • lib/ui/icons.dart:330:35 • avoid_renaming_method_parameters
+   info • The parameter name 'old' doesn't match the name 'oldDelegate' in the overridden method • lib/ui/logo.dart:158:34 • avoid_renaming_method_parameters
+
+4 issues found. (ran in 13.3s)
